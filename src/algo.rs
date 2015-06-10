@@ -79,6 +79,42 @@ impl<Ix: IndexType> Toposort<NodeIndex<Ix>, FixedBitSet>
             tovisit: tovisit,
         }
     }
+    
+    pub fn is_cyclic_directed<N, E>(&mut self, graph: &Graph<N, E, Directed, Ix>) -> bool {
+        panic!();
+    }
+
+    fn visit_int<N, E, G, F>(&mut self, nix: NodeIndex<Ix>, g: &mut G, f: &mut F)
+        where G: Borrow<Graph<N, E, Directed, Ix>>,
+              F: FnMut(&mut G, NodeIndex<Ix>),
+    {
+        if self.ordered.is_visited(&nix) {
+            return;
+        }
+
+        self.ordered.visit(nix);
+        f(g, nix);
+        let mut edges = (*g).borrow().walk_edges_directed(nix, Outgoing);
+        while let Some(edge) = edges.next((*g).borrow()) {
+            let target = (*g).borrow().raw_edges()[edge.index()].target();
+            // Look at each neighbor, and those that only have incoming edges
+            // from the already ordered list, they are the next to visit.
+            if (*g).borrow().neighbors_directed(target, Incoming).all(|b| self.ordered.is_visited(&b)) {
+                self.visit_int(target, g, f)
+            }
+        }
+    }
+
+    pub fn visit<N, E, G, F>(&mut self, mut graph: G, mut f: F)
+        where G: Borrow<Graph<N, E, Directed, Ix>>,
+              F: FnMut(&mut G, NodeIndex<Ix>),
+    {
+        self.ordered = graph.borrow().visit_map();
+        for i in 0..graph.borrow().node_count() {
+            let nix = NodeIndex::new(i);
+            self.visit_int(nix, &mut graph, &mut f);
+        }
+    }
 
     pub fn next<N, E>(&mut self, g: &Graph<N, E, Directed, Ix>) -> Option<NodeIndex<Ix>>
     {
