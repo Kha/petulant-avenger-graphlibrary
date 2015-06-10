@@ -345,6 +345,20 @@ fn without()
     assert_eq!(term, vec![b, c, d]);
 }
 
+fn assert_is_topo_order<N, E>(gr: &Graph<N, E, Directed>, order: &[NodeIndex])
+{
+    assert_eq!(gr.node_count(), order.len());
+    // check all the edges of the graph
+    for edge in gr.raw_edges() {
+        let a = edge.source();
+        let b = edge.target();
+        let ai = order.iter().position(|x| *x == a).unwrap();
+        let bi = order.iter().position(|x| *x == b).unwrap();
+        println!("Check that {:?} is before {:?}", a, b);
+        assert!(ai < bi, "Topo order: assertion that node {:?} is before {:?} failed",
+                a, b);
+    }
+}
 
 #[test]
 fn toposort() {
@@ -380,15 +394,7 @@ fn toposort() {
     println!("{:?}", order);
     assert_eq!(order.len(), gr.node_count());
 
-    // check all the edges of the graph
-    for edge in gr.raw_edges() {
-        let a = edge.source();
-        let b = edge.target();
-        let ai = order.iter().position(|x| *x == a);
-        let bi = order.iter().position(|x| *x == b);
-        println!("Check that {:?} is before {:?}", a, b);
-        assert!(ai < bi);
-    }
+    assert_is_topo_order(&gr, &order);
 }
 
 #[test]
@@ -757,15 +763,24 @@ fn toposort_generic() {
         index += 1.;
     });
 
+    let mut order = Vec::new();
     index = 0.;
     let mut topo = pg::algo::Toposort::new(&gr);
     while let Some(nx) = topo.next(&gr) {
+        order.push(nx);
         assert_eq!(gr[nx].1, index);
         index += 1.;
     }
     println!("{:?}", gr);
+    assert_is_topo_order(&gr, &order);
 
-    topo.visit(&gr, |g, nix| {
-        println!("Visit: {:?} with value {:?}", nix, g[nix]);
+    order.clear();
+    topo.visit(&gr, |g, nx| {
+        order.push(nx);
+        println!("Visit: {:?} with value {:?}", nx, g[nx]);
     });
+
+    assert_is_topo_order(&gr, &order);
+
+    assert!(!topo.is_cyclic_directed(&gr));
 }
