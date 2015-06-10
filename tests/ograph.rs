@@ -765,7 +765,7 @@ fn toposort_generic() {
 
     let mut order = Vec::new();
     index = 0.;
-    let mut topo = pg::algo::Toposort::new(&gr);
+    let mut topo = pg::algo::TopoWalker::new(&gr);
     while let Some(nx) = topo.next(&gr) {
         order.push(nx);
         assert_eq!(gr[nx].1, index);
@@ -774,6 +774,18 @@ fn toposort_generic() {
     println!("{:?}", gr);
     assert_is_topo_order(&gr, &order);
 
+    {
+        order.clear();
+        let mut topo = pg::algo::Topo::new(&gr);
+        let mut topo = topo.as_walker(&gr);
+        while let Some(nx) = topo.next(&gr) {
+            order.push(nx);
+        }
+        println!("{:?}", gr);
+        assert_is_topo_order(&gr, &order);
+    }
+
+    let mut topo = pg::algo::Topo::new(&gr);
     order.clear();
     topo.visit(&gr, |g, nx| {
         order.push(nx);
